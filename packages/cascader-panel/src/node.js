@@ -153,6 +153,7 @@ export default class Node {
 
   doCheck(checked) {
     if (this.checked !== checked) {
+      this.checked !== undefined && this.config.onChecked(checked, this);
       if (this.config.checkStrictly) {
         this.checked = checked;
       } else {

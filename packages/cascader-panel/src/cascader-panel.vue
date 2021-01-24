@@ -41,6 +41,8 @@ const DefaultProps = {
   children: 'children',
   leaf: 'leaf',
   disabled: 'disabled',
+  onChecked: noop,
+  isSequential: false,
   hoverThreshold: 500
 };
 
@@ -110,13 +112,23 @@ export default {
       store: [],
       menus: [],
       activePath: [],
-      loadCount: 0
+      loadCount: 0,
+      sequentialChecked: this.value instanceof Array ? this.value.slice(0) : []
     };
   },
 
   computed: {
     config() {
-      return merge({ ...DefaultProps }, this.props || {});
+      let onChecked = noop;
+      if (((this.props && this.props.multiple) || DefaultProps.multiple) && typeof this.props.onChecked === 'function') {
+        onChecked = this.sequentialChecked ? function(checked, node) {
+          const index = this.sequentialChecked.findIndex(item => node.path.join() === item.join());
+          checked ? this.sequentialChecked.splice(index, 1) : this.sequentialChecked.push(node.path);
+
+          this.props.onChecked(checked, node);
+        }.bind(this) : noop;
+      }
+      return merge({ ...DefaultProps}, this.props || {}, {onChecked});
     },
     multiple() {
       return this.config.multiple;
@@ -357,8 +369,12 @@ export default {
     getCheckedNodes(leafOnly) {
       const { checkedValue, multiple } = this;
       if (multiple) {
-        const nodes = this.getFlattedNodes(leafOnly);
-        return nodes.filter(node => node.checked);
+        if (this.config.isSequential) {
+          return this.sequentialChecked;
+        } else {
+          const nodes = this.getFlattedNodes(leafOnly);
+          return nodes.filter(node => node.checked);
+        }
       } else {
         return isEmpty(checkedValue)
           ? []
